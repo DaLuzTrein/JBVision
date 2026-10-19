@@ -1,0 +1,303 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: sans-serif;
+            background: #0f1117;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        /* HEADER */
+        header {
+            background: #1a1d27;
+            border-bottom: 1px solid #2d3148;
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 1px;
+        }
+
+        header h1 span { color: #4f8ef7; }
+
+        /* NAVEGAÇÃO */
+        nav { display: flex; gap: 12px; }
+
+        nav a {
+            text-decoration: none;
+            color: #94a3b8;
+            font-size: 14px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid #2d3148;
+            transition: all 0.2s;
+        }
+
+        nav a:hover, nav a.ativo {
+            background: #4f8ef7;
+            color: #fff;
+            border-color: #4f8ef7;
+        }
+
+        /* CONTEÚDO */
+        main { padding: 32px; }
+
+        .titulo-secao {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .titulo-secao h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* INDICADOR DE ATUALIZAÇÃO */
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .status .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            animation: pulsar 2s infinite;
+        }
+
+        @keyframes pulsar {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* LISTA DE REGISTROS */
+        #lista-registros {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .card-registro {
+            background: #1a1d27;
+            border: 1px solid #2d3148;
+            border-radius: 10px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            animation: entrar 0.3s ease;
+        }
+
+        @keyframes entrar {
+            from { opacity: 0; transform: translateY(-8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* FOTO DO ALUNO */
+        .foto-aluno {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #2d3148;
+            background: #2d3148;
+            flex-shrink: 0;
+        }
+
+        .foto-placeholder {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #2d3148;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        /* INFORMAÇÕES */
+        .info { flex: 1; }
+
+        .info .nome {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .info .detalhes {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .info .detalhes span { display: flex; align-items: center; gap: 4px; }
+
+        /* HORÁRIO */
+        .horario {
+            text-align: right;
+            font-size: 13px;
+            color: #64748b;
+            flex-shrink: 0;
+        }
+
+        .horario .hora {
+            font-size: 18px;
+            font-weight: 700;
+            color: #4f8ef7;
+            display: block;
+        }
+
+        /* VAZIO */
+        .vazio {
+            text-align: center;
+            padding: 60px;
+            color: #4a5568;
+            font-size: 15px;
+        }
+
+        /* ERRO */
+        .erro {
+            text-align: center;
+            padding: 60px;
+            color: #f87171;
+            font-size: 15px;
+        }
+        /* ── SEÇÃO DE ALERTAS ──────────────────── */
+        .secao-alertas {
+            background: #1a0a0a;
+            border: 1px solid #7f1d1d;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 28px;
+            animation: entrar 0.3s ease;
+        }
+
+        .titulo-alertas {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .titulo-alertas-esq {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .titulo-alertas h2 {
+            font-size: 15px;
+            font-weight: 700;
+            color: #fca5a5;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .dot-alerta {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #f87171;
+            animation: pulsar 1s infinite;
+            flex-shrink: 0;
+        }
+
+        .badge-alertas {
+            background: #f87171;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+
+        .botao-dispensar-todos {
+            background: transparent;
+            border: 1px solid #7f1d1d;
+            color: #fca5a5;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .botao-dispensar-todos:hover {
+            background: #7f1d1d;
+            color: #fff;
+        }
+
+        /* ── CARDS DE ALERTA ───────────────────── */
+        #lista-alertas {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .card-alerta {
+            background: #2d0a0a;
+            border: 1px solid #991b1b;
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            animation: entrarAlerta 0.3s ease;
+        }
+
+        @keyframes entrarAlerta {
+            from { opacity: 0; transform: translateX(-8px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        .alerta-info {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .alerta-camera {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fca5a5;
+        }
+
+        .alerta-horario {
+            font-size: 12px;
+            color: #f87171;
+        }
+
+        .botao-dispensar {
+            background: transparent;
+            border: 1px solid #991b1b;
+            color: #f87171;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .botao-dispensar:hover {
+            background: #991b1b;
+            color: #fff;
+        }

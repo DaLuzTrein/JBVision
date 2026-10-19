@@ -1,0 +1,40 @@
+# ===== SEGREDOS (nunca vão para o git) =====
+.env
+.env.*
+!.env.example
+
+# ...mas o .env do CompreFace NÃO é segredo (só valores padrão) e o
+# docker-compose dele precisa desse arquivo para funcionar após o clone
+!CompreFace_1.2.0/.env
+!CompreFace_1.2.0/custom-builds/**/.env
+
+# ===== DADOS DE PESSOAS (fotos de rosto = dado pessoal sensível, LGPD) =====
+backend/fotos/
+
+# ===== BUILD / DEPENDÊNCIAS =====
+target/
+build/
+bin/
+*.class
+*.jar
+*.log
+
+# ===== IDEs =====
+.settings/
+.project
+.classpath
+.factorypath
+.idea/
+*.iml
+.vscode/
+.sts4-cache/
+
+# ===== SISTEMA OPERACIONAL =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== PYTHON =====
+__pycache__/
+*.pyc
+.venv/

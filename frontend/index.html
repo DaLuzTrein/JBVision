@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styleindex.css">
+    <title>JBVision — Monitor</title>
+    <!-- Bibliotecas para WebSocket (SockJS + STOMP) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+</head>
+<body>
+
+<header>
+    <h1>JB<span>Vision</span></h1>
+    <nav>
+        <a href="index.html" class="ativo">Monitor</a>
+        <a href="pessoas.html">Pessoas</a>
+        <a href="cameras.html">Câmeras</a>
+    </nav>
+</header>
+
+<main>
+
+    <!-- SEÇÃO DE ALERTAS -->
+    <div id="secao-alertas" class="secao-alertas" style="display:none">
+        <div class="titulo-alertas">
+            <div class="titulo-alertas-esq">
+                <div class="dot-alerta"></div>
+                <h2>⚠ Pessoas não reconhecidas</h2>
+                <span class="badge-alertas" id="badge-alertas">0</span>
+            </div>
+            <button class="botao-dispensar-todos" id="btn-dispensar-todos">Dispensar todos</button>
+        </div>
+        <div id="lista-alertas"></div>
+    </div>
+
+    <!-- SEÇÃO DE REGISTROS -->
+    <div class="titulo-secao">
+        <h2>Registros recentes</h2>
+        <div class="status">
+            <div class="dot"></div>
+            Atualizando a cada 5 segundos
+        </div>
+    </div>
+
+    <div id="lista-registros">
+        <div class="vazio">Carregando registros...</div>
+    </div>
+
+</main>
+
+<script>
+    const API = "http://localhost:8081";
+
+    // ── WEBSOCKET ─────────────────────────────────
+    function conectarWebSocket() {
+        const socket = new SockJS(`${API}/ws`);
+        const stompClient = Stomp.over(socket);
+
+        // Desativa logs do STOMP no console
+        stompClient.debug = null;
+
+        stompClient.connect({}, function () {
+            console.log("WebSocket conectado!");
+
+            // Assina o tópico de alertas — qualquer mensagem enviada para
+            // /topic/alertas pelo backend chega aqui instantaneamente
+            stompClient.subscribe("/topic/alertas", function (mensagem) {
+                const alerta = JSON.parse(mensagem.body);
+                adicionarAlerta(alerta);
+            });
+
+            // Carrega alertas ativos que existiam antes de conectar
+            carregarAlertasAtivos();
+        }, function () {
+            // Se perder a conexão, tenta reconectar em 5 segundos
+            console.log("WebSocket desconectado, tentando reconectar...");
+            setTimeout(conectarWebSocket, 5000);
+        });
+    }
+
+    // ── ALERTAS ───────────────────────────────────
+    function carregarAlertasAtivos() {
+        fetch(`${API}/api/alertas`)
+            .then(res => res.json())
+            .then(alertas => {
+                alertas.forEach(alerta => adicionarAlerta(alerta));
+            });
+    }
+
+    function adicionarAlerta(alerta) {
+        const secao = document.getElementById("secao-alertas");
+        const lista = document.getElementById("lista-alertas");
+
+        // Evita duplicatas caso o alerta já esteja na tela
+        if (document.getElementById(`alerta-${alerta.id}`)) return;
+
+        secao.style.display = "block";
+
+        const { hora, dia } = formatarHorario(alerta.horario);
+
+        const card = document.createElement("div");
+        card.className = "card-alerta";
+        card.id = `alerta-${alerta.id}`;
+        card.innerHTML = `
+            <div class="alerta-info">
+                <span class="alerta-camera">📷 ${alerta.camera}</span>
+                <span class="alerta-horario">${hora} — ${dia}</span>
+            </div>
+            <button class="botao-dispensar" onclick="dispensarAlerta(${alerta.id})">Dispensar</button>
+        `;
+
+        lista.prepend(card);
+        atualizarBadge();
+
+        // Som de alerta
+        try { new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAA").play(); } catch (_) {}
+    }
+
+    function dispensarAlerta(id) {
+        fetch(`${API}/api/alertas/${id}/dispensar`, { method: "PUT" })
+            .then(() => {
+                const card = document.getElementById(`alerta-${id}`);
+                if (card) card.remove();
+                atualizarBadge();
+            });
+    }
+
+    document.getElementById("btn-dispensar-todos").addEventListener("click", function () {
+        fetch(`${API}/api/alertas/dispensar-todos`, { method: "PUT" })
+            .then(() => {
+                document.getElementById("lista-alertas").innerHTML = "";
+                document.getElementById("secao-alertas").style.display = "none";
+                atualizarBadge();
+            });
+    });
+
+    function atualizarBadge() {
+        const total = document.getElementById("lista-alertas").children.length;
+        document.getElementById("badge-alertas").textContent = total;
+        if (total === 0) {
+            document.getElementById("secao-alertas").style.display = "none";
+        }
+    }
+
+    // ── REGISTROS ─────────────────────────────────
+    function formatarHorario(horarioStr) {
+        const data = new Date(horarioStr);
+        const hora = data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        const dia  = data.toLocaleDateString("pt-BR");
+        return { hora, dia };
+    }
+
+    function criarCardRegistro(registro) {
+        const { hora, dia } = formatarHorario(registro.horario);
+        const identificador = registro.identificador || "";
+
+        const fotoHtml = identificador
+            ? `<img class="foto-aluno" src="${API}/api/pessoas/foto/${identificador}" alt="${registro.nomePessoa}" onerror="this.outerHTML='<div class=\\'foto-placeholder\\'>👤</div>'">`
+            : `<div class="foto-placeholder">👤</div>`;
+
+        return `
+            <div class="card-registro">
+                ${fotoHtml}
+                <div class="info">
+                    <div class="nome">${registro.nomePessoa || "Desconhecido"}</div>
+                    <div class="detalhes">
+                        <span>Identificador: ${identificador || "—"}</span>
+                        <span>Tipo: ${registro.tipoPessoa || "—"}</span>
+                        <span>Câmera: ${registro.camera || "—"}</span>
+                    </div>
+                </div>
+                <div class="horario">
+                    <span class="hora">${hora}</span>
+                    ${dia}
+                </div>
+            </div>
+        `;
+    }
+
+    function carregarRegistros() {
+        fetch(`${API}/api/registro`)
+            .then(res => {
+                if (!res.ok) throw new Error("Erro na resposta do servidor");
+                return res.json();
+            })
+            .then(registros => {
+                const lista = document.getElementById("lista-registros");
+
+                if (registros.length === 0) {
+                    lista.innerHTML = '<div class="vazio">Nenhum registro ainda.</div>';
+                    return;
+                }
+
+                const recentes = registros.reverse().slice(0, 20);
+                lista.innerHTML = recentes.map(criarCardRegistro).join("");
+            })
+            .catch(err => {
+                document.getElementById("lista-registros").innerHTML =
+                    `<div class="erro">Não foi possível conectar ao servidor.<br>${err.message}</div>`;
+            });
+    }
+
+    // Inicia tudo
+    conectarWebSocket();
+    carregarRegistros();
+    setInterval(carregarRegistros, 5000);
+</script>
+
+</body>
+</html>

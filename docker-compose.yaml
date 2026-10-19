@@ -1,0 +1,48 @@
+# JBVision: banco de dados + backend.
+# O CompreFace continua sendo subido pelo compose oficial dele:
+#   cd CompreFace_1.2.0 && docker compose up -d
+# Este arquivo lê as variáveis do arquivo .env (na mesma pasta).
+
+services:
+  db:
+    image: postgres:16
+    container_name: jbvision-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-JBVision}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD no arquivo .env}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - jbvision-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-JBVision}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: jbvision-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-JBVision}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD}
+      COMPREFACE_API_KEY: ${COMPREFACE_API_KEY:?Defina COMPREFACE_API_KEY no arquivo .env}
+      # De dentro do container, "localhost" é o próprio container;
+      # host.docker.internal aponta para o seu PC, onde o CompreFace expõe a porta 8000.
+      COMPREFACE_URL: ${COMPREFACE_URL:-http://host.docker.internal:8000/api/v1/recognition/recognize}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # necessário no Linux; no Windows/Mac é inofensivo
+    volumes:
+      - ./backend/fotos:/app/fotos
+
+volumes:
+  jbvision-db-data:

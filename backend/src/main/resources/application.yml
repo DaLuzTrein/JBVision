@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: JBVision
+
+  # Rodando FORA do Docker (Eclipse/IntelliJ/mvnw): lê o arquivo .env automaticamente
+  # (procura em backend/ e na raiz do projeto). Dentro do Docker, quem fornece
+  # as variáveis é o docker-compose.yaml.
+  config:
+    import: optional:file:.env[.properties],optional:file:../.env[.properties]
+
+  datasource:
+    # Os valores depois dos ":" são padrões para desenvolvimento local.
+    # Sem ":" (como na senha e na API key) = obrigatório vir do .env.
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/JBVision}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: 8081
+
+# Configurações do CompreFace
+compre-face:
+  url: ${COMPREFACE_URL:http://localhost:8000/api/v1/recognition/recognize}
+  api-key: ${COMPREFACE_API_KEY}

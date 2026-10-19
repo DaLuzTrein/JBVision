@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JBVision — Câmeras</title>
+    <link rel="stylesheet" href="stylecameras.css">
+</head>
+<body>
+
+<header>
+    <h1>JB<span>Vision</span></h1>
+    <nav>
+        <a href="index.html">Monitor</a>
+        <a href="pessoas.html">Pessoas</a>
+        <a href="cameras.html" class="ativo">Câmeras</a>
+    </nav>
+</header>
+
+<main>
+    <!-- FORMULÁRIO -->
+    <div class="painel">
+        <h2>Cadastrar Câmera</h2>
+
+        <div class="campo">
+            <label>Nome</label>
+            <input type="text" id="nome">
+        </div>
+
+        <div class="campo">
+            <label>Token <span style="color:#64748b;font-weight:400">(identificador)</span></label>
+            <input type="text" id="token">
+        </div>
+
+        <div class="campo">
+            <label>Foto da localização (opcional)</label>
+            <div class="upload-area">
+                <input type="file" id="foto" accept="image/*">
+                <div class="icone">📍</div>
+                <p>Clique para selecionar uma foto<br>do local onde a câmera está</p>
+                <div class="nome-arquivo" id="nome-arquivo"></div>
+            </div>
+            <img id="preview-foto" class="preview-foto" alt="preview">
+        </div>
+
+        <button class="btn btn-primary" id="btn-cadastrar">Cadastrar Câmera</button>
+
+        <!-- Destaque do ID após cadastro -->
+        <div class="id-destaque" id="id-destaque">
+            <p>Configure o script Python com este token</p>
+            <div class="numero" style="font-size:20px;word-break:break-all" id="token-gerado">—</div>
+            <small>CAMERA_TOKEN = "<span id="token-script">—</span>"</small>
+        </div>
+
+        <div class="feedback" id="feedback"></div>
+        <button class="btn btn-danger" id="btn-limpar">Limpar formulário</button>
+    </div>
+
+    <!-- LISTA -->
+    <div>
+        <div class="titulo-secao">
+            <h2>Câmeras cadastradas</h2>
+            <span class="contador" id="contador">0 câmeras</span>
+        </div>
+        <div id="lista-cameras">
+            <div class="vazio">Carregando...</div>
+        </div>
+    </div>
+</main>
+
+<!-- POPUP DE EDIÇÃO -->
+<div class="overlay" id="overlay">
+    <div class="popup">
+        <button class="popup-fechar" id="popup-fechar">✕</button>
+        <h2 id="popup-titulo">Editar Câmera</h2>
+        <div class="popup-id" id="popup-id"></div>
+
+        <!-- Nome e Token -->
+        <div class="popup-secao">
+            <h3>Informações</h3>
+            <div class="popup-linha">
+                <div class="campo">
+                    <label>Nome da câmera</label>
+                    <input type="text" id="popup-nome">
+                </div>
+                <div class="campo">
+                    <label>Token</label>
+                    <input type="text" id="popup-token">
+                </div>
+                <button class="btn-inline btn-inline-primary" id="popup-btn-salvar">Salvar</button>
+            </div>
+        </div>
+
+        <!-- Foto -->
+        <div class="popup-secao">
+            <h3>Foto da localização</h3>
+            <img id="popup-foto-atual" class="foto-popup-atual" alt="foto da câmera">
+            <div id="popup-foto-placeholder" class="foto-popup-placeholder">📷</div>
+            <div class="upload-area-popup">
+                <input type="file" id="popup-foto-input" accept="image/*">
+                📎 Clique para trocar a foto
+            </div>
+        </div>
+
+        <div class="popup-feedback" id="popup-feedback"></div>
+    </div>
+</div>
+
+<script>
+    const API = "http://localhost:8081";
+    let idAtualPopup = null;
+
+    // Preview da foto antes de cadastrar
+    document.getElementById("foto").addEventListener("change", function () {
+        const arquivo = this.files[0];
+        if (!arquivo) return;
+        document.getElementById("nome-arquivo").textContent = arquivo.name;
+        const reader = new FileReader();
+        reader.onload = e => {
+            const preview = document.getElementById("preview-foto");
+            preview.src = e.target.result;
+            preview.style.display = "block";
+        };
+        reader.readAsDataURL(arquivo);
+    });
+
+    function mostrarFeedback(msg, tipo) {
+        const el = document.getElementById("feedback");
+        el.textContent = msg;
+        el.className = `feedback ${tipo}`;
+        el.style.display = "block";
+        setTimeout(() => el.style.display = "none", 5000);
+    }
+
+    function mostrarPopupFeedback(msg, tipo) {
+        const el = document.getElementById("popup-feedback");
+        el.textContent = msg;
+        el.className = `popup-feedback ${tipo}`;
+        el.style.display = "block";
+        setTimeout(() => el.style.display = "none", 4000);
+    }
+
+    // Cadastrar câmera
+    document.getElementById("btn-cadastrar").addEventListener("click", function () {
+        const nome = document.getElementById("nome").value.trim();
+        if (!nome) { mostrarFeedback("Preencha o nome da câmera.", "erro"); return; }
+
+        const token = document.getElementById("token").value.trim();
+        if (!token) { mostrarFeedback("Preencha o token da câmera.", "erro"); return; }
+
+        const formData = new FormData();
+        formData.append("nome", nome);
+        formData.append("token", token);
+        const foto = document.getElementById("foto").files[0];
+        if (foto) formData.append("foto", foto);
+
+        const btn = document.getElementById("btn-cadastrar");
+        btn.disabled = true;
+        btn.textContent = "Cadastrando...";
+
+        fetch(`${API}/api/cameras/cadastrar`, { method: "POST", body: formData })
+            .then(res => res.json())
+            .then(camera => {
+                // Mostra o token em destaque
+                document.getElementById("token-gerado").textContent = camera.token;
+                document.getElementById("token-script").textContent = camera.token;
+                document.getElementById("id-destaque").style.display = "block";
+
+                // Limpa o formulário
+                document.getElementById("nome").value = "";
+                document.getElementById("token").value = "";
+                document.getElementById("foto").value = "";
+                document.getElementById("nome-arquivo").textContent = "";
+                document.getElementById("preview-foto").style.display = "none";
+
+                carregarCameras();
+            })
+            .catch(() => mostrarFeedback("Erro ao conectar ao servidor.", "erro"))
+            .finally(() => { btn.disabled = false; btn.textContent = "Cadastrar Câmera"; });
+    });
+
+    // Limpar formulário
+    document.getElementById("btn-limpar").addEventListener("click", function () {
+        document.getElementById("nome").value = "";
+        document.getElementById("token").value = "";
+        document.getElementById("foto").value = "";
+        document.getElementById("nome-arquivo").textContent = "";
+        document.getElementById("preview-foto").style.display = "none";
+        document.getElementById("id-destaque").style.display = "none";
+        document.getElementById("feedback").style.display = "none";
+    });
+
+    // Deletar câmera
+    function deletarCamera(id, nome) {
+        const confirmacao = prompt(`Para remover "${nome}" do sistema, digite "Confirmar":`);
+        if (confirmacao !== "Confirmar") {
+            if (confirmacao !== null) alert("Texto incorreto. A câmera não foi removida.");
+            return;
+        }
+        fetch(`${API}/api/cameras/${id}`, { method: "DELETE" })
+            .then(res => res.text())
+            .then(msg => { mostrarFeedback(msg, "sucesso"); carregarCameras(); })
+            .catch(() => mostrarFeedback("Erro ao deletar câmera.", "erro"));
+    }
+
+    // Abrir popup
+    function abrirPopup(camera) {
+        idAtualPopup = camera.id;
+        document.getElementById("popup-titulo").textContent = camera.nome;
+        document.getElementById("popup-id").textContent = 'Token para o script Python: ' + camera.token;
+        document.getElementById("popup-nome").value = camera.nome;
+        document.getElementById("popup-token").value = camera.token;
+        document.getElementById("popup-feedback").style.display = "none";
+
+        // Foto atual
+        const imgAtual = document.getElementById("popup-foto-atual");
+        const placeholder = document.getElementById("popup-foto-placeholder");
+        imgAtual.src = `${API}/api/cameras/foto/${camera.id}`;
+        imgAtual.style.display = "block";
+        imgAtual.onerror = () => {
+            imgAtual.style.display = "none";
+            placeholder.style.display = "flex";
+        };
+        placeholder.style.display = "none";
+
+        document.getElementById("overlay").classList.add("aberto");
+    }
+
+    document.getElementById("popup-fechar").addEventListener("click", () => {
+        document.getElementById("overlay").classList.remove("aberto");
+        carregarCameras();
+    });
+
+    document.getElementById("overlay").addEventListener("click", function (e) {
+        if (e.target === this) { this.classList.remove("aberto"); carregarCameras(); }
+    });
+
+    // Salvar nome
+    document.getElementById("popup-btn-salvar").addEventListener("click", function () {
+        const nome = document.getElementById("popup-nome").value.trim();
+        if (!nome) { mostrarPopupFeedback("Preencha o nome.", "erro"); return; }
+
+        const token = document.getElementById("popup-token").value.trim();
+        const params = new URLSearchParams();
+        if (nome) params.append("nome", nome);
+        if (token) params.append("token", token);
+
+        fetch(`${API}/api/cameras/${idAtualPopup}?${params}`, { method: "PUT" })
+            .then(res => res.text())
+            .then(msg => {
+                mostrarPopupFeedback(msg, "sucesso");
+                document.getElementById("popup-titulo").textContent = nome;
+            })
+            .catch(() => mostrarPopupFeedback("Erro ao salvar.", "erro"));
+    });
+
+    // Trocar foto pelo popup
+    document.getElementById("popup-foto-input").addEventListener("change", function () {
+        if (!this.files[0]) return;
+        const formData = new FormData();
+        formData.append("foto", this.files[0]);
+        this.value = "";
+
+        fetch(`${API}/api/cameras/${idAtualPopup}/foto`, { method: "PUT", body: formData })
+            .then(res => res.text())
+            .then(msg => {
+                mostrarPopupFeedback(msg, "sucesso");
+                // Recarrega a foto no popup
+                const imgAtual = document.getElementById("popup-foto-atual");
+                imgAtual.src = `${API}/api/cameras/foto/${idAtualPopup}?t=${Date.now()}`;
+                imgAtual.style.display = "block";
+                document.getElementById("popup-foto-placeholder").style.display = "none";
+            })
+            .catch(() => mostrarPopupFeedback("Erro ao trocar foto.", "erro"));
+    });
+
+    // Carregar câmeras
+    function carregarCameras() {
+        fetch(`${API}/api/cameras`)
+            .then(res => res.json())
+            .then(cameras => {
+                const lista = document.getElementById("lista-cameras");
+                document.getElementById("contador").textContent =
+                    `${cameras.length} ${cameras.length === 1 ? "câmera" : "câmeras"}`;
+
+                if (cameras.length === 0) {
+                    lista.innerHTML = '<div class="vazio">Nenhuma câmera cadastrada.</div>';
+                    return;
+                }
+
+                lista.innerHTML = cameras.map(c => `
+                    <div class="card-camera" onclick="abrirPopup(${JSON.stringify(c).replace(/"/g, '&quot;')})">
+                        <button class="btn-deletar" onclick="event.stopPropagation(); deletarCamera(${c.id}, '${c.nome}')" title="Remover câmera">✕</button>
+                        ${c.fotoCapa
+                            ? `<img class="foto-camera" src="${API}/api/cameras/foto/${c.id}" alt="${c.nome}" onerror="this.outerHTML='<div class=\\'foto-placeholder-camera\\'>📷</div>'">`
+                            : `<div class="foto-placeholder-camera">📷</div>`
+                        }
+                        <div class="info-camera">
+                            <div class="badge-id">🔑 ${c.token}</div>
+                            <div class="nome-camera">${c.nome}</div>
+                        </div>
+                    </div>
+                `).join("");
+            })
+            .catch(() => {
+                document.getElementById("lista-cameras").innerHTML =
+                    '<div class="vazio">Erro ao carregar câmeras.</div>';
+            });
+    }
+
+    carregarCameras();
+</script>
+
+</body>
+</html>

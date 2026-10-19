@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JBVision — Pessoas</title>
+    <link rel="stylesheet" href="stylepessoas.css">
+</head>
+<body>
+
+<header>
+    <h1>JB<span>Vision</span></h1>
+    <nav>
+        <a href="index.html">Monitor</a>
+        <a href="pessoas.html" class="ativo">Pessoas</a>
+        <a href="cameras.html">Câmeras</a>
+    </nav>
+</header>
+
+<main>
+    <div class="painel">
+        <h2>Cadastrar Pessoa</h2>
+
+        <div class="campo">
+            <label>Identificador</label>
+            <input type="text" id="identificador">
+        </div>
+
+        <div class="campo">
+            <label>Nome completo</label>
+            <input type="text" id="nome">
+        </div>
+
+        <div class="campo">
+            <label>Tipo</label>
+            <select id="tipo">
+                <option value="ALUNO">Aluno</option>
+                <option value="FUNCIONARIO">Funcionário</option>
+            </select>
+        </div>
+
+        <div class="campo">
+            <label>Fotos do rosto</label>
+            <div class="upload-area">
+                <input type="file" id="fotos" accept="image/*" multiple>
+                <div class="icone">📷</div>
+                <p>Clique para selecionar fotos</p>
+                <div class="nomes-arquivos" id="nomes-arquivos"></div>
+            </div>
+        </div>
+
+        <button class="botao botao-primary" id="botao-cadastrar">Cadastrar Pessoa</button>
+        <div class="feedback" id="feedback"></div>
+        <button class="botao botao-danger" id="botao-limpar">Limpar formulário</button>
+    </div>
+
+    <div>
+        <div class="titulo-secao">
+            <h2>Pessoas cadastradas</h2>
+            <span class="contador" id="contador">0 pessoas</span>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filtros">
+            <input type="text" id="pesq-nome" placeholder="🔍 Pesquisar por nome..." oninput="filtrar()">
+            <input type="text" id="pesq-id" placeholder="🔍 Pesquisar por identificador..." oninput="filtrar()">
+            <div class="radio-grupo">
+                <label>
+                    <input type="radio" name="filtro-tipo" value="TODOS" checked onchange="filtrar()">
+                    <span id="rb-todos" class="radio-btn" style="background:#4f8ef7;color:#fff">Todos</span>
+                </label>
+                <label>
+                    <input type="radio" name="filtro-tipo" value="ALUNO" onchange="filtrar()">
+                    <span id="rb-aluno" class="radio-btn">Alunos</span>
+                </label>
+                <label>
+                    <input type="radio" name="filtro-tipo" value="FUNCIONARIO" onchange="filtrar()">
+                    <span id="rb-func" class="radio-btn">Funcionários</span>
+                </label>
+            </div>
+        </div>
+
+        <div id="lista-pessoas"></div>
+    </div>
+</main>
+
+<!-- Popup para editar pessoa -->
+<div class="overlay" id="overlay">
+    <div class="popup">
+        <button class="popup-fechar" id="popup-fechar">✕</button>
+        <h2 id="popup-titulo">Editar Pessoa</h2>
+
+        <div class="popup-secao">
+            <h3>Informações</h3>
+            <div class="popup-linha">
+                <div class="campo">
+                    <label>Nome</label>
+                    <input type="text" id="popup-nome">
+                </div>
+                <div class="campo">
+                    <label>Identificador</label>
+                    <input type="text" id="popup-identificador">
+                </div>
+                <div class="campo">
+                    <label>Tipo</label>
+                    <select id="popup-tipo">
+                        <option value="ALUNO">Aluno</option>
+                        <option value="FUNCIONARIO">Funcionário</option>
+                    </select>
+                </div>
+                <button class="botao-inline botao-inline-primary" id="popup-botao-salvar">Salvar</button>
+            </div>
+        </div>
+
+        <div class="popup-secao">
+            <h3>Fotos cadastradas</h3>
+            <div class="grade-fotos" id="popup-grade-fotos"></div>
+            <div class="upload-area-popup">
+                <input type="file" id="popup-fotos" accept="image/*" multiple>
+                Clique para adicionar mais fotos
+            </div>
+        </div>
+
+        <div class="popup-feedback" id="popup-feedback"></div>
+    </div>
+</div>
+
+<script>
+    const API = "http://localhost:8081";
+    let fotosAcumuladas = [];
+    let identificadorAtualPopup = null;
+    let todasAsPessoas = [];
+
+    // ── UPLOAD ────────────────────────────────────
+    document.getElementById("fotos").addEventListener("change", function () {
+        Array.from(this.files).forEach(f => {
+            if (!fotosAcumuladas.some(x => x.name === f.name)) fotosAcumuladas.push(f);
+        });
+        atualizarListaFotos();
+        this.value = "";
+    });
+
+    function atualizarListaFotos() {
+        document.getElementById("nomes-arquivos").innerHTML =
+            fotosAcumuladas.map(f => `<span>📎 ${f.name}</span>`).join("<br>");
+    }
+
+    // ── FEEDBACK ──────────────────────────────────
+    function mostrarFeedback(mensagem, tipo) {
+        const el = document.getElementById("feedback");
+        el.textContent = mensagem;
+        el.className = `feedback ${tipo}`;
+        el.style.display = "block";
+        setTimeout(() => el.style.display = "none", 4000);
+    }
+
+    function mostrarPopupFeedback(mensagem, tipo) {
+        const el = document.getElementById("popup-feedback");
+        el.textContent = mensagem;
+        el.className = `popup-feedback ${tipo}`;
+        el.style.display = "block";
+        setTimeout(() => el.style.display = "none", 4000);
+    }
+
+    // ── CADASTRAR ─────────────────────────────────
+    document.getElementById("botao-cadastrar").addEventListener("click", function () {
+        const identificador = document.getElementById("identificador").value.trim();
+        const nome = document.getElementById("nome").value.trim();
+        const tipo = document.getElementById("tipo").value;
+
+        if (!identificador || !nome) { mostrarFeedback("Preencha identificador e nome.", "erro"); return; }
+        if (fotosAcumuladas.length === 0) { mostrarFeedback("Selecione pelo menos 1 foto.", "erro"); return; }
+
+        const formData = new FormData();
+        formData.append("identificador", identificador);
+        formData.append("nome", nome);
+        formData.append("tipo", tipo);
+        fotosAcumuladas.forEach(f => formData.append("fotos", f));
+
+        const botao = document.getElementById("botao-cadastrar");
+        botao.disabled = true;
+        botao.textContent = "Cadastrando...";
+
+        fetch(`${API}/api/pessoas/cadastrar`, { method: "POST", body: formData })
+            .then(res => res.text())
+            .then(msg => {
+                mostrarFeedback(msg, "sucesso");
+                document.getElementById("identificador").value = "";
+                document.getElementById("nome").value = "";
+                fotosAcumuladas = [];
+                atualizarListaFotos();
+                carregarPessoas();
+            })
+            .catch(() => mostrarFeedback("Erro ao conectar ao servidor.", "erro"))
+            .finally(() => { botao.disabled = false; botao.textContent = "Cadastrar Pessoa"; });
+    });
+
+    // ── LIMPAR ────────────────────────────────────
+    document.getElementById("botao-limpar").addEventListener("click", function () {
+        document.getElementById("identificador").value = "";
+        document.getElementById("nome").value = "";
+        document.getElementById("fotos").value = "";
+        fotosAcumuladas = [];
+        atualizarListaFotos();
+        document.getElementById("feedback").style.display = "none";
+    });
+
+    // ── DELETAR ───────────────────────────────────
+    function deletarPessoa(identificador, nome) {
+        const confirmacao = prompt(`Para remover ${nome} do sistema, digite "Confirmar":`);
+        if (confirmacao !== "Confirmar") {
+            if (confirmacao !== null) alert("Texto incorreto. A pessoa não foi removida.");
+            return;
+        }
+        fetch(`${API}/api/pessoas/${identificador}`, { method: "DELETE" })
+            .then(res => res.text())
+            .then(msg => { mostrarFeedback(msg, "sucesso"); carregarPessoas(); })
+            .catch(() => mostrarFeedback("Erro ao deletar pessoa.", "erro"));
+    }
+
+    // ── FILTROS ───────────────────────────────────
+    function filtrar() {
+        const nome = document.getElementById("pesq-nome").value.trim().toLowerCase();
+        const id   = document.getElementById("pesq-id").value.trim().toLowerCase();
+        const tipo = document.querySelector('input[name="filtro-tipo"]:checked').value;
+
+        document.getElementById("rb-todos").style.background  = tipo === "TODOS"       ? "#4f8ef7"  : "transparent";
+        document.getElementById("rb-todos").style.color       = tipo === "TODOS"       ? "#fff"     : "#94a3b8";
+        document.getElementById("rb-aluno").style.background  = tipo === "ALUNO"       ? "#4f8ef7"  : "transparent";
+        document.getElementById("rb-aluno").style.color       = tipo === "ALUNO"       ? "#fff"     : "#94a3b8";
+        document.getElementById("rb-func").style.background   = tipo === "FUNCIONARIO" ? "#f59e0b"  : "transparent";
+        document.getElementById("rb-func").style.color        = tipo === "FUNCIONARIO" ? "#fff"     : "#94a3b8";
+
+        const filtradas = todasAsPessoas.filter(p => {
+            const bateuNome = p.nome.toLowerCase().includes(nome);
+            const bateuId   = p.identificador.toLowerCase().includes(id);
+            const bateuTipo = tipo === "TODOS" || p.tipo === tipo;
+            return bateuNome && bateuId && bateuTipo;
+        });
+
+        renderizarPessoas(filtradas);
+    }
+
+    // ── RENDERIZAR ────────────────────────────────
+    function formatarVisto(visto) {
+        if (!visto) return "Nunca visto";
+        return new Date(visto).toLocaleString("pt-BR");
+    }
+
+    function renderizarPessoas(pessoas) {
+        const lista = document.getElementById("lista-pessoas");
+        document.getElementById("contador").textContent =
+            `${pessoas.length} ${pessoas.length === 1 ? "pessoa" : "pessoas"}`;
+
+        if (pessoas.length === 0) {
+            lista.innerHTML = '<div class="vazio">Nenhuma pessoa encontrada.</div>';
+            return;
+        }
+
+        lista.innerHTML = pessoas.map(pessoa => `
+            <div class="card-pessoa" onclick="abrirPopup('${pessoa.identificador}')">
+                <button class="botao-deletar" onclick="event.stopPropagation(); deletarPessoa('${pessoa.identificador}', '${pessoa.nome}')" title="Remover pessoa">✕</button>
+                <img
+                    src="${API}/api/pessoas/foto/${pessoa.identificador}"
+                    alt="${pessoa.nome}"
+                    onerror="this.outerHTML='<div class=\\'foto-placeholder\\'>👤</div>'"
+                />
+                <div class="nome">${pessoa.nome}</div>
+                <div class="identificador">${pessoa.identificador}</div>
+                <div class="${pessoa.tipo === 'FUNCIONARIO' ? 'tipo-funcionario' : 'tipo-aluno'}">${pessoa.tipo}</div>
+                <div class="visto">Última vez visto: ${formatarVisto(pessoa.vistoPorUltimo)}</div>
+            </div>
+        `).join("");
+    }
+
+    // ── CARREGAR ──────────────────────────────────
+    function carregarPessoas() {
+        fetch(`${API}/api/pessoas`)
+            .then(res => res.json())
+            .then(pessoas => {
+                todasAsPessoas = pessoas;
+                filtrar();
+            })
+            .catch(() => {
+                document.getElementById("lista-pessoas").innerHTML =
+                    '<div class="vazio">Erro ao carregar pessoas.</div>';
+            });
+    }
+
+    // ── POPUP ─────────────────────────────────────
+    function abrirPopup(identificador) {
+        fetch(`${API}/api/pessoas/${identificador}`)
+            .then(res => res.json())
+            .then(pessoa => {
+                identificadorAtualPopup = pessoa.identificador;
+                document.getElementById("popup-titulo").textContent = pessoa.nome;
+                document.getElementById("popup-nome").value = pessoa.nome;
+                document.getElementById("popup-identificador").value = pessoa.identificador;
+                document.getElementById("popup-tipo").value = pessoa.tipo || "ALUNO";
+                document.getElementById("popup-feedback").style.display = "none";
+                document.getElementById("overlay").classList.add("aberto");
+                carregarFotosPopup(pessoa.identificador);
+            })
+            .catch(() => alert("Erro ao carregar dados da pessoa."));
+    }
+
+    document.getElementById("popup-fechar").addEventListener("click", () => {
+        document.getElementById("overlay").classList.remove("aberto");
+        carregarPessoas();
+    });
+
+    document.getElementById("overlay").addEventListener("click", function (e) {
+        if (e.target === this) { this.classList.remove("aberto"); carregarPessoas(); }
+    });
+
+    document.getElementById("popup-botao-salvar").addEventListener("click", function () {
+        const novoNome = document.getElementById("popup-nome").value.trim();
+        const novoIdentificador = document.getElementById("popup-identificador").value.trim();
+        const novoTipo = document.getElementById("popup-tipo").value;
+
+        if (!novoNome || !novoIdentificador) {
+            mostrarPopupFeedback("Preencha todos os campos.", "erro");
+            return;
+        }
+
+        const params = new URLSearchParams({ novoNome, novoIdentificador, novoTipo });
+
+        fetch(`${API}/api/pessoas/${identificadorAtualPopup}?${params}`, { method: "PUT" })
+            .then(res => res.text())
+            .then(msg => {
+                mostrarPopupFeedback(msg, "sucesso");
+                identificadorAtualPopup = novoIdentificador;
+                document.getElementById("popup-titulo").textContent = novoNome;
+            })
+            .catch(() => mostrarPopupFeedback("Erro ao salvar.", "erro"));
+    });
+
+    // ── FOTOS POPUP ───────────────────────────────
+    function carregarFotosPopup(identificador) {
+        fetch(`${API}/api/pessoas/${identificador}`)
+            .then(res => res.json())
+            .then(pessoa => {
+                fetch(`${API}/api/pessoas/${identificador}/fotos`)
+                    .then(res => res.json())
+                    .then(fotos => montarGradeFotos(fotos, pessoa.fotoRosto));
+            });
+    }
+
+    function montarGradeFotos(fotos, caminhoCapaAtual) {
+        const grade = document.getElementById("popup-grade-fotos");
+
+        if (fotos.length === 0) {
+            grade.innerHTML = "<p style='color:#64748b;font-size:13px'>Nenhuma foto cadastrada.</p>";
+            return;
+        }
+
+        grade.innerHTML = fotos.map(foto => {
+            const ehCapa = foto.caminho === caminhoCapaAtual;
+            return `
+                <div class="item-foto ${ehCapa ? "capa" : ""}" onclick="trocarCapa('${identificadorAtualPopup}', ${foto.id})">
+                    <img src="${API}/api/pessoas/foto/id/${foto.id}" alt="foto">
+                    ${ehCapa ? '<div class="badge-capa">CAPA</div>' : ""}
+                    <button class="botao-apagar-foto" onclick="apagarFoto(event, ${foto.id})">✕</button>
+                </div>
+            `;
+        }).join("");
+    }
+
+    function trocarCapa(identificador, fotoId) {
+        fetch(`${API}/api/pessoas/${identificador}/fotoCapa/${fotoId}`, { method: "PUT" })
+            .then(res => res.text())
+            .then(() => { mostrarPopupFeedback("Foto capa atualizada!", "sucesso"); carregarFotosPopup(identificador); })
+            .catch(() => mostrarPopupFeedback("Erro ao trocar foto capa.", "erro"));
+    }
+
+    function apagarFoto(event, fotoId) {
+        event.stopPropagation();
+        if (!confirm("Remover esta foto?")) return;
+
+        fetch(`${API}/api/pessoas/fotos/${fotoId}`, { method: "DELETE" })
+            .then(res => res.text())
+            .then(() => { mostrarPopupFeedback("Foto removida.", "sucesso"); carregarFotosPopup(identificadorAtualPopup); })
+            .catch(() => mostrarPopupFeedback("Erro ao remover foto.", "erro"));
+    }
+
+    document.getElementById("popup-fotos").addEventListener("change", function () {
+        if (this.files.length === 0) return;
+
+        const formData = new FormData();
+        Array.from(this.files).forEach(f => formData.append("fotos", f));
+        this.value = "";
+
+        fetch(`${API}/api/pessoas/${identificadorAtualPopup}/fotos`, { method: "POST", body: formData })
+            .then(res => res.text())
+            .then(msg => { mostrarPopupFeedback(msg, "sucesso"); carregarFotosPopup(identificadorAtualPopup); })
+            .catch(() => mostrarPopupFeedback("Erro ao adicionar fotos.", "erro"));
+    });
+
+    carregarPessoas();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,14 @@
+# ---- Etapa 1: compila o projeto ----
+FROM maven:3.9-eclipse-temurin-21 AS build
+WORKDIR /build
+COPY pom.xml .
+RUN mvn -q dependency:go-offline
+COPY src ./src
+RUN mvn -q package -DskipTests
+
+# ---- Etapa 2: imagem final, só com o necessário para rodar ----
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+COPY --from=build /build/target/*.jar app.jar
+EXPOSE 8081
+ENTRYPOINT ["java", "-jar", "app.jar"]

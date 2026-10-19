@@ -1,0 +1,6 @@
+target/
+fotos/
+.git
+.settings/
+.idea/
+*.log

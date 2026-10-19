@@ -1,0 +1,8 @@
+# Evita o "31 arquivos modificados" causado só por diferença de quebra de linha (Windows x Linux)
+* text=auto
+*.sh text eol=lf
+mvnw text eol=lf
+*.cmd text eol=crlf
+*.png binary
+*.jpg binary
+*.jpeg binary
