@@ -20,10 +20,6 @@ spring:
       ddl-auto: update
     show-sql: true
 
-  jackson:
-    serialization:
-      write-dates-as-timestamps: false
-
 server:
   port: 8081
 
